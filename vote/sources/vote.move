@@ -39,6 +39,7 @@ module vote::vote {
 
     // Candidate info
     public struct CandidateInfo has copy, store, drop {
+        address: address,
         name: String,
         description: String,
         pfp: String,
@@ -185,6 +186,7 @@ module vote::vote {
         while (i < len) {
             let addr = *candidate_addresses.borrow(i);
             let info = CandidateInfo {
+                address: addr,
                 name: *candidate_names.borrow(i),
                 description: *candidate_descriptions.borrow(i),
                 pfp: *candidate_pfps.borrow(i),
@@ -249,6 +251,7 @@ module vote::vote {
             name,
             description,
             pfp,
+            address: candidate_address,
         };
         
         election.candidate_addresses.push_back(candidate_address);
@@ -368,51 +371,53 @@ module vote::vote {
         election.is_ended = true;
         election.is_active = false;
         
-        // Calculate winner
-        let mut winner_address = @0x0;
-        let mut max_votes = 0u64;
-        
-        let len = election.candidate_addresses.length();
-        let i = 0;
-        while (i < len) {
-            let addr = *election.candidate_addresses.borrow(i);
-            let votes = *vec_map::get(&election.vote_counts, &addr);
-            if (votes > max_votes) {
-                max_votes = votes;
-                winner_address = addr;
-            };
-            i = i + 1;
-        };
-        
-        election.winner = option::some(winner_address);
-        let winner_info = vec_map::get(&election.candidate_info, &winner_address);
-        some_function(copy winner_address);
-        let election_id = object::uid_to_inner(&election.id);
-        
-        // Create election result
-        let result = ElectionResult {
-            id: object::new(ctx),
-            election_id,
-            election_name: election.name,
-            election_description: election.description,
-            winner_address: copy winner_address,
-            winner_name: winner_info.name,
-            winner_description: winner_info.description,
-            winner_votes: max_votes,
-            winner_pfp: winner_info.pfp,
-            total_votes: election.total_votes,
-            end_time: election.end_time,
-            all_results: election.vote_counts,
-        };
-        
-        event::emit(ElectionEndedEvent {
-            election_id,
-            winner_address,
-            winner_name: winner_info.name,
-            winner_votes: max_votes,
-            total_votes: election.total_votes,
-            timestamp: current_time,
-        });
+ // Calculate winner
+let mut winner_address = @0x0;
+let mut max_votes = 0u64;
+
+let len = election.candidate_addresses.length();
+let mut i = 0;
+while (i < len) {
+    let addr = *election.candidate_addresses.borrow(i);
+    let votes = *vec_map::get(&election.vote_counts, &addr);
+    if (votes > max_votes) {
+        max_votes = votes;
+        winner_address = addr;
+    };
+    i = i + 1;
+};
+
+election.winner = option::some(winner_address);
+
+// Copy winner_address to a new variable to avoid borrow conflict
+let winner_addr_copy = winner_address;
+let winner_info = vec_map::get(&election.candidate_info, &winner_addr_copy);
+let election_id = object::uid_to_inner(&election.id);
+
+// Create election result
+let result = ElectionResult {
+    id: object::new(ctx),
+    election_id,
+    election_name: election.name,
+    election_description: election.description,
+    winner_address: winner_info.address,
+    winner_name: winner_info.name,
+    winner_description: winner_info.description,
+    winner_votes: max_votes,
+    winner_pfp: winner_info.pfp,
+    total_votes: election.total_votes,
+    end_time: election.end_time,
+    all_results: election.vote_counts,
+};
+
+event::emit(ElectionEndedEvent {
+    election_id,
+    winner_address: winner_info.address,  // Also use winner_info.address here
+    winner_name: winner_info.name,
+    winner_votes: max_votes,
+    total_votes: election.total_votes,
+    timestamp: current_time,
+});
         
         transfer::share_object(result);
     }
@@ -458,14 +463,14 @@ module vote::vote {
     }
 
     // Get candidate info
-    public fun get_candidate_info(election: &Election, candidate_address: address): (String, String, String, u64) {
-        assert!(vec_map::contains(&election.candidate_info, &candidate_address), ECandidateNotFound);
-        
-        let info = vec_map::get(&election.candidate_info, &candidate_address);
-        let votes = vec_map::get(&election.vote_counts, &candidate_address);
-        
-        (info.name, info.description, info.pfp, *votes)
-    }
+ public fun get_candidate_info(election: &Election, candidate_address: address): (address, String, String, String, u64) {
+    assert!(vec_map::contains(&election.candidate_info, &candidate_address), ECandidateNotFound);
+    
+    let info = vec_map::get(&election.candidate_info, &candidate_address);
+    let votes = vec_map::get(&election.vote_counts, &candidate_address);
+    
+    (info.address, info.name, info.description, info.pfp, *votes)
+}
 
     // Get voter status
     public fun get_voter_status(election: &Election, voter_address: address): bool {

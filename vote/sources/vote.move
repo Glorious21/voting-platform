@@ -3,10 +3,13 @@ use sui::vec_map::VecMap;
 use std::string::String;
 use sui::event;
 use std::option::Option;
-//Election object 
+use sui::address;
+use sui::object;
+ 
+const EAlreadyRegistered: u64 = 1;
+const EVoterNotFound: u64 = 2;
 
-
-
+//Election object
 public struct Election has key {
     id: UID,
     name: String,
@@ -95,8 +98,44 @@ public struct CandidatePass has key, store {
     description: String,
     used: bool,
     pfp: String,
+}
 
+// Register a new voter for an election
+public entry fun register_voter(
+    _admin_cap: &ElectionAdminCap,
+    election: &mut Election,
+    voter_address: address,
+    name: String,
+    ctx: &mut TxContext
+) {
+    assert!(!election.voters.contains(&voter_address), EAlreadyRegistered);
+    election.voters.insert(voter_address, false);
 
+    let election_id_obj = object::id(election);
+    let election_addr = object::id_to_address(&election_id_obj);
+    let election_id_u64 = (address::to_u256(election_addr) as u64);
+
+    let vote_pass = VotePass {
+        id : object::new(ctx),
+        name,
+        voter_address,
+        has_voted: false,
+        voted_for: 0, // 0 indicates no vote cast yet
+        election_id: election_id_u64, 
+    };
+
+    transfer::transfer(vote_pass, voter_address)
+}
+
+// Remove a voter from an election
+public entry fun deregister_voter(
+    _admin_cap: &ElectionAdminCap,
+    election: &mut Election,
+    voter_address: address,
+) {
+    assert!(election.voters.contains(&voter_address), EVoterNotFound);
+
+    election.voters.remove(&voter_address);
 }
 
 //election created event

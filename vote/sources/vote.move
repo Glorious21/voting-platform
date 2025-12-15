@@ -237,7 +237,7 @@ module vote::vote {
     #[allow(lint(public_entry))]
     public entry fun register_candidate(
         election: &mut Election,
-        _: &ElectionAdminCap,
+        _: &ElectionAdminCap ,
         candidate_address: address,
         name: String,
         description: String,

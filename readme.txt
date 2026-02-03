@@ -151,3 +151,47 @@ check voter object
 check votepass
 
 ❗ 5. Ensure winner cannot be computed twice
+// create_election() function
+
+// register_candidate() function
+
+// register_voter() function
+
+// cast_vote() function
+
+//end_election() function
+
+//start_election() function
+
+//Helper functions
+
+
+//calculate_results() function
+
+//get_election() function
+
+//get_candidate() function
+
+//get_voter() function
+
+//get_all_voters_for_a_candidate() function
+
+//get_all_voters_for_an_election() function
+
+//get_election_results() functionn
+
+//delete_candidate() / remove_candidate()
+
+
+
+//deregister_voter()
+
+
+//withdraw_vote() (optional)
+
+
+//extend_election_time()
+
+
+//pause_election() (optional)
+

@@ -31,6 +31,10 @@ We use a standard "Fork and Pull" workflow. Here is the step-by-step process:
   git checkout -b issue-1-core-structs
   ```
 
+
+
+
+
 ### 5. Make Your Changes
 - Open the project in your code editor 
 - Implement the changes required by your issue in `sources/vote.move`.

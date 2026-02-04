@@ -1,0 +1,108 @@
+// Prisma Schema for Voting Platform
+// This defines our database tables and relationships
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== CORE TABLES ====================
+
+// Elections - indexed from EventElectionCreated
+model Election {
+  id            Int         @id @default(autoincrement())
+  electionId    String      @unique @map("election_id")  // On-chain election ID (u64 as string)
+  name          String
+  creator       String                                    // Creator wallet address
+  txDigest      String      @map("tx_digest")            // Transaction that created this
+  createdAt     DateTime    @default(now()) @map("created_at")
+  
+  // Relations
+  candidates    Candidate[]
+  voters        Voter[]
+  votes         Vote[]
+  result        ElectionResult?
+  
+  @@map("elections")
+}
+
+// Candidates - indexed from EventCandidateRegistered
+model Candidate {
+  id               Int       @id @default(autoincrement())
+  electionId       String    @map("election_id")
+  candidateAddress String    @map("candidate_address")
+  txDigest         String    @map("tx_digest")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  election         Election  @relation(fields: [electionId], references: [electionId])
+  votes            Vote[]
+  
+  @@unique([electionId, candidateAddress])
+  @@map("candidates")
+}
+
+// Voters - indexed from EventVoterRegistered
+model Voter {
+  id            Int       @id @default(autoincrement())
+  electionId    String    @map("election_id")
+  voterAddress  String    @map("voter_address")
+  txDigest      String    @map("tx_digest")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  election      Election  @relation(fields: [electionId], references: [electionId])
+  votes         Vote[]
+  
+  @@unique([electionId, voterAddress])
+  @@map("voters")
+}
+
+// Votes - indexed from EventVoteCast
+model Vote {
+  id               Int       @id @default(autoincrement())
+  electionId       String    @map("election_id")
+  voterAddress     String    @map("voter_address")
+  candidateAddress String    @map("candidate_address")
+  txDigest         String    @map("tx_digest")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  election         Election  @relation(fields: [electionId], references: [electionId])
+  candidate        Candidate @relation(fields: [electionId, candidateAddress], references: [electionId, candidateAddress])
+  voter            Voter     @relation(fields: [electionId, voterAddress], references: [electionId, voterAddress])
+  
+  @@unique([electionId, voterAddress])  // One vote per voter per election
+  @@map("votes")
+}
+
+// Election Results - indexed from EventElectionEnded
+model ElectionResult {
+  id            Int       @id @default(autoincrement())
+  electionId    String    @unique @map("election_id")
+  winner        String?                                  // Winner address (null if no votes)
+  totalVotes    Int       @map("total_votes")
+  txDigest      String    @map("tx_digest")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  election      Election  @relation(fields: [electionId], references: [electionId])
+  
+  @@map("election_results")
+}
+
+// ==================== INDEXER STATE ====================
+
+// Cursor - tracks the last processed event for each event type
+model Cursor {
+  id        String   @id                               // Event type identifier
+  txDigest  String   @map("tx_digest")
+  eventSeq  String   @map("event_seq")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  @@map("cursors")
+}

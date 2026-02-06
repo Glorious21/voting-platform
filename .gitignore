@@ -2,3 +2,4 @@
 vote/Move.lock
 
 .trae
+backend/package-lock.json

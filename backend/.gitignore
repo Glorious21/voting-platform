@@ -26,4 +26,5 @@ npm-debug.log*
 
 # OS
 .DS_Store
-Thumbs.db
+Thumbs.d
+backend/package-lock.json
